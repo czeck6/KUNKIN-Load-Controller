@@ -2,16 +2,14 @@ import sys
 import threading
 import time
 
-from kunkin import KunkinDCLoad  # Ensure your KunkinDCLoad class is saved in kunkin.py
+from kunkin import KunkinDCLoad
+from kiprim import KiprimPS
 
-
-# Cross-platform getch()
 if sys.platform.startswith('win'):
     import msvcrt
 
     def getch():
         return msvcrt.getch().decode('utf-8')
-
 else:
     import termios
     import tty
@@ -26,9 +24,7 @@ else:
             termios.tcsetattr(fd, termios.TCSADRAIN, old_settings)
         return ch
 
-
 def monitor_load(load, stop_event):
-    """Poll and display load status"""
     while not stop_event.is_set():
         data = load.get_measurements()
         if data:
@@ -39,9 +35,7 @@ def monitor_load(load, stop_event):
                   f"Power: {watts:.2f} W   ", end="")
         time.sleep(1)
 
-
 def emergency_watchdog(load, stop_event):
-    """Listen for 'q' to immediately turn off the load"""
     while not stop_event.is_set():
         ch = getch()
         if ch.lower() == 'q':
@@ -50,26 +44,28 @@ def emergency_watchdog(load, stop_event):
             stop_event.set()
             break
 
-
 def show_menu():
-    print("\n=== KUNKIN LOAD CONTROL MENU ===")
-    print("1. Set mode (0=CV, 1=CC, 2=CR, 3=CW)")
-    print("2. Set voltage (V)")
-    print("3. Set current (A)")
-    print("4. Set resistance (Ohm)")
-    print("5. Set power (W)")
+    print("\n=== KUNKIN LOAD & PS CONTROL MENU ===")
+    print("1. Set load mode (0=CV, 1=CC, 2=CR, 3=CW)")
+    print("2. Set load voltage (V)")
+    print("3. Set load current (A)")
+    print("4. Set load resistance (Ohm)")
+    print("5. Set load power (W)")
     print("6. Turn load ON")
     print("7. Turn load OFF")
     print("8. Start monitoring")
-    print("9. Exit")
+    print("9. Set PS voltage (V)")
+    print("10. Set PS current (A)")
+    print("11. Turn PS OFF (0V/0A)")
+    print("12. Turn PS ON")
+    print("13. Exit")
     print("Press 'q' anytime to kill the load.\n")
 
-
 def main():
-    import os
-
-    port = input("Enter serial port (e.g., COM5 or /dev/ttyUSB0): ").strip()
-    load = KunkinDCLoad(port=port)
+    load_port = input("Enter load serial port (e.g., /dev/ttyUSB0): ").strip()
+    ps_port = input("Enter power supply serial port (e.g., /dev/ttyUSB1): ").strip()
+    load = KunkinDCLoad(port=load_port)
+    ps = KiprimPS(port=ps_port)
 
     stop_event = threading.Event()
     monitor_thread = None
@@ -78,7 +74,6 @@ def main():
 
     try:
         while not stop_event.is_set():
-            # On Windows, use non-blocking key detection
             if sys.platform.startswith('win') and msvcrt.kbhit():
                 key = msvcrt.getch().decode('utf-8').lower()
                 if key == 'q':
@@ -116,19 +111,30 @@ def main():
                     monitor_thread = threading.Thread(target=monitor_load, args=(load, stop_event), daemon=True)
                     monitor_thread.start()
             elif choice == '9':
+                v = float(input("Enter PS voltage (V): "))
+                ps.set_voltage(v)
+            elif choice == '10':
+                c = float(input("Enter PS current (A): "))
+                ps.set_current(c)
+            elif choice == '11':
+                ps.output_off()
+            elif choice == '12':
+                ps.output_on()
+            elif choice == '13':
                 stop_event.set()
                 load.set_power_state(False)
+                ps.output_off()
             else:
                 print("Invalid option.")
 
-            time.sleep(0.1)  # Avoid CPU hammering
+            time.sleep(0.1)
     except KeyboardInterrupt:
         print("\n[!] Ctrl+C pressed. Turning off load and exiting.")
     finally:
         stop_event.set()
         load.set_power_state(False)
+        ps.output_off()
         print("Goodbye.")
-
 
 if __name__ == "__main__":
     main()
