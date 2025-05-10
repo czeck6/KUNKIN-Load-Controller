@@ -1,0 +1,46 @@
+Screen {
+    layout: vertical;
+    padding: 1 2;
+}
+
+DeviceStatus {
+    border: round green;
+    padding: 0;
+    width: 50%;
+    height: auto;
+    background: $surface;
+    color: $text;
+}
+
+Input {
+    width: 100%;
+    margin: 0 0 1 0;
+    border: round $primary;
+    background: $background;
+    color: $text;
+}
+
+Button {
+    width:  90%;
+    margin: 0 0 1 0;
+    border: round $secondary;
+    background: $primary;
+    align: left middle;
+    color: $text;
+}
+
+Button:hover {
+    border: double $accent;
+    background: $boost;
+}
+
+Horizontal {
+    margin: 1;
+    width: 100%;
+    align: center middle;
+}
+
+Vertical {
+    width: 50%;
+    align: center middle;
+}
